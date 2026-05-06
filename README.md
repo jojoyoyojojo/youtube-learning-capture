@@ -12,6 +12,8 @@ YouTube URL -> `yt-dlp` 下载音频 -> `faster-whisper` 转写 -> 生成 Markdo
 - 自动生成标签（基于 `TICKER_TAGS`）
 - 转写附带可点击时间戳链接（适配 Obsidian，跳转到 YouTube 指定秒数）
 
+当前版本对股票投资场景做了规则优化（如 ticker 别名识别与标签聚合），后续可扩展到其他主题领域。
+
 ## 项目结构
 
 ```text
