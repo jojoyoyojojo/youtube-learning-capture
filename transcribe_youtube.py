@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -8,7 +9,8 @@ from faster_whisper import WhisperModel
 from tickers import TICKER_ALIASES, TICKER_TAGS
 
 
-OUTPUT_DIR = Path("outputs")
+DEFAULT_OUTPUT_DIR = Path("outputs")
+LOCAL_CONFIG_PATH = Path("config.local.json")
 
 def sanitize_filename(name: str) -> str:
     """Make a safe filename from a video title."""
@@ -23,7 +25,32 @@ def format_upload_date(raw_date: str | None) -> str:
     return f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
 
 
-def download_audio(youtube_url: str) -> dict[str, Any]:
+def get_output_dir() -> Path:
+    """
+    Read output_dir from config.local.json if available.
+    Falls back to outputs/ when config is missing or invalid.
+    """
+    if not LOCAL_CONFIG_PATH.exists():
+        return DEFAULT_OUTPUT_DIR
+
+    try:
+        config_data = json.loads(LOCAL_CONFIG_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print("Warning: config.local.json is not valid JSON. Using outputs/.")
+        return DEFAULT_OUTPUT_DIR
+
+    if not isinstance(config_data, dict):
+        print("Warning: config.local.json must be a JSON object. Using outputs/.")
+        return DEFAULT_OUTPUT_DIR
+
+    output_dir_value = config_data.get("output_dir")
+    if not isinstance(output_dir_value, str) or not output_dir_value.strip():
+        return DEFAULT_OUTPUT_DIR
+
+    return Path(output_dir_value.strip())
+
+
+def download_audio(youtube_url: str, output_dir: Path) -> dict[str, Any]:
     """
     Download YouTube audio and convert it to mp3.
     Returns a small metadata dict for later markdown output.
@@ -31,7 +58,7 @@ def download_audio(youtube_url: str) -> dict[str, Any]:
     ydl_opts = {
         "format": "bestaudio/best",
         "noplaylist": True,
-        "outtmpl": str(OUTPUT_DIR / "%(id)s.%(ext)s"),
+        "outtmpl": str(output_dir / "%(id)s.%(ext)s"),
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -48,7 +75,7 @@ def download_audio(youtube_url: str) -> dict[str, Any]:
         channel = info.get("channel") or info.get("uploader") or "Unknown"
         upload_date = format_upload_date(info.get("upload_date"))
 
-    audio_path = OUTPUT_DIR / f"{video_id}.mp3"
+    audio_path = output_dir / f"{video_id}.mp3"
     return {
         "title": title,
         "audio_path": audio_path,
@@ -194,10 +221,11 @@ def save_markdown(
     transcript_entries: list[tuple[int, str]],
     transcript_text: str,
     tickers: list[str],
+    output_dir: Path,
 ) -> Path:
     """Save the final note as a Markdown file."""
     markdown_filename = f"{sanitize_filename(title)}.md"
-    markdown_path = OUTPUT_DIR / markdown_filename
+    markdown_path = output_dir / markdown_filename
 
     ticker_tags = generate_ticker_tags(tickers)
 
@@ -231,7 +259,8 @@ def save_markdown(
 
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    output_dir = get_output_dir()
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     youtube_url = input("Please enter a YouTube URL: ").strip()
     if not youtube_url:
@@ -239,7 +268,7 @@ def main() -> None:
         return
 
     print("1) Downloading audio with yt-dlp...")
-    video_data = download_audio(youtube_url)
+    video_data = download_audio(youtube_url, output_dir)
     title = video_data["title"]
     audio_path = video_data["audio_path"]
 
@@ -267,6 +296,7 @@ def main() -> None:
         transcript_entries=transcript_entries,
         transcript_text=transcript_text,
         tickers=detected_tickers,
+        output_dir=output_dir,
     )
 
     print(f"Done! Markdown saved to: {markdown_path}")
