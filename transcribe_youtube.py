@@ -74,6 +74,7 @@ def download_audio(youtube_url: str, output_dir: Path) -> dict[str, Any]:
         video_id = info.get("id") or "audio"
         channel = info.get("channel") or info.get("uploader") or "Unknown"
         upload_date = format_upload_date(info.get("upload_date"))
+        description = info.get("description") or ""
 
     audio_path = output_dir / f"{video_id}.mp3"
     return {
@@ -81,6 +82,7 @@ def download_audio(youtube_url: str, output_dir: Path) -> dict[str, Any]:
         "audio_path": audio_path,
         "channel": channel,
         "published_date": upload_date,
+        "description": description.strip(),
     }
 
 
@@ -224,6 +226,7 @@ def save_markdown(
     source_url: str,
     channel: str,
     published_date: str,
+    video_description: str,
     transcript_entries: list[tuple[int, str]],
     transcript_text: str,
     tickers: list[str],
@@ -246,7 +249,6 @@ def save_markdown(
 
     yaml_lines = [
         "---",
-        "type: youtube-learning-capture",
         f"title: {yaml_quote(title)}",
         f"source: {yaml_quote(source_url)}",
         f"channel: {yaml_quote(channel)}",
@@ -269,9 +271,14 @@ def save_markdown(
 
     yaml_lines.append("---")
 
+    description_block = ""
+    if video_description:
+        description_block = f"## Video Description\n\n{video_description}\n\n"
+
     markdown_content = (
         "\n".join(yaml_lines)
         + "\n\n"
+        + description_block
         + "## Raw Transcript\n\n"
         + f"{raw_transcript_text}\n"
     )
@@ -315,6 +322,7 @@ def main() -> None:
         source_url=youtube_url,
         channel=video_data["channel"],
         published_date=video_data["published_date"],
+        video_description=video_data["description"],
         transcript_entries=transcript_entries,
         transcript_text=transcript_text,
         tickers=detected_tickers,

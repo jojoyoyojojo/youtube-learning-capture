@@ -67,7 +67,7 @@ python transcribe_youtube.py
 
 ## 生成的 Markdown 内容
 
-- 使用 Obsidian YAML frontmatter 存储元信息（`type/title/source/channel/published/tags`）
+- 使用 Obsidian YAML frontmatter 存储元信息（`title/source/channel/published/tags`）
 - `tickers` 字段仅在识别到 ticker 时写入
 - `tags` 在无识别结果时写为 `[]`
 - 正文仅保留 `## Raw Transcript`
@@ -77,7 +77,6 @@ python transcribe_youtube.py
 
 ```yaml
 ---
-type: youtube-learning-capture
 title: "Original Video Title"
 source: "https://www.youtube.com/watch?v=VIDEO_ID"
 channel: "Channel Name"
