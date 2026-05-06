@@ -67,11 +67,26 @@ python transcribe_youtube.py
 
 ## 生成的 Markdown 内容
 
-- 标题：`Published Date | Channel`
-- `Source URL`
-- `Video Title`
-- `Channel`
-- `Published Date`
-- `Tags`（由检测到的 ticker 自动聚合）
-- `Mentioned Tickers`
-- `Raw Transcript`（每行带 YouTube 时间戳链接）
+- 使用 Obsidian YAML frontmatter 存储元信息（`type/title/source/channel/published/tags`）
+- `tickers` 字段仅在识别到 ticker 时写入
+- `tags` 在无识别结果时写为 `[]`
+- 正文仅保留 `## Raw Transcript`
+- 转写每行带可点击 YouTube 时间戳链接
+
+示例：
+
+```yaml
+---
+type: youtube-learning-capture
+title: "Original Video Title"
+source: "https://www.youtube.com/watch?v=VIDEO_ID"
+channel: "Channel Name"
+published: 2026-05-06
+tags:
+  - AI
+  - Semiconductor
+tickers:
+  - NVDA
+  - AMD
+---
+```

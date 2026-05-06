@@ -213,6 +213,12 @@ def build_timestamp_link(youtube_url: str, seconds: int) -> str:
     return f"{youtube_url}{join_char}t={seconds}s"
 
 
+def yaml_quote(text: str) -> str:
+    """Quote text safely for YAML double-quoted strings."""
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def save_markdown(
     title: str,
     source_url: str,
@@ -224,13 +230,12 @@ def save_markdown(
     output_dir: Path,
 ) -> Path:
     """Save the final note as a Markdown file."""
-    markdown_filename = f"{sanitize_filename(title)}.md"
+    note_title = f"{published_date} | {channel}"
+    markdown_filename = f"{sanitize_filename(note_title)}.md"
     markdown_path = output_dir / markdown_filename
 
     ticker_tags = generate_ticker_tags(tickers)
 
-    tags_text = " ".join(f"#{tag}" for tag in ticker_tags)
-    tickers_text = "\n".join(f"- {ticker}" for ticker in tickers) if tickers else "None detected."
     if transcript_entries:
         raw_transcript_text = "\n".join(
             f"- [{format_timestamp(seconds)}]({build_timestamp_link(source_url, seconds)}) {text}"
@@ -239,19 +244,36 @@ def save_markdown(
     else:
         raw_transcript_text = transcript_text
 
+    yaml_lines = [
+        "---",
+        "type: youtube-learning-capture",
+        f"title: {yaml_quote(title)}",
+        f"source: {yaml_quote(source_url)}",
+        f"channel: {yaml_quote(channel)}",
+    ]
+
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", published_date):
+        yaml_lines.append(f"published: {published_date}")
+    else:
+        yaml_lines.append(f"published: {yaml_quote(published_date)}")
+
+    if ticker_tags:
+        yaml_lines.append("tags:")
+        yaml_lines.extend(f"  - {tag}" for tag in ticker_tags)
+    else:
+        yaml_lines.append("tags: []")
+
+    if tickers:
+        yaml_lines.append("tickers:")
+        yaml_lines.extend(f"  - {ticker}" for ticker in tickers)
+
+    yaml_lines.append("---")
+
     markdown_content = (
-        f"# {published_date} | {channel}\n\n"
-        f"Source URL: {source_url}\n"
-        f"Video Title: {title}\n"
-        f"Channel: {channel}\n"
-        f"Published Date: {published_date}\n\n"
-        f"Tags: {tags_text}\n\n"
-        f"---\n\n"
-        f"## Mentioned Tickers\n\n"
-        f"{tickers_text}\n\n"
-        f"---\n\n"
-        f"## Raw Transcript\n\n"
-        f"{raw_transcript_text}\n"
+        "\n".join(yaml_lines)
+        + "\n\n"
+        + "## Raw Transcript\n\n"
+        + f"{raw_transcript_text}\n"
     )
 
     markdown_path.write_text(markdown_content, encoding="utf-8")
